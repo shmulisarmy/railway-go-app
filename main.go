@@ -1,13 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
+	"railway-go-app/env"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgx/v5"
 )
 
 var upgrader = websocket.Upgrader{
@@ -18,6 +21,23 @@ var upgrader = websocket.Upgrader{
 }
 
 var clients = make([]*websocket.Conn, 0)
+var people_store LiveDbSync
+
+func init() {
+	err := env.Load_env(".env")
+	if err != nil {
+		panic(err)
+	}
+	db_conn, err = pgx.Connect(context.Background(), os.Getenv("DB_URL"))
+	if err != nil {
+		panic(err)
+	}
+	people_store = LiveDbSync{
+		query:        "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
+		update_query: "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
+	}
+	people_store.load_data()
+}
 
 func wsHandler(r *gin.Context) {
 	conn, err := upgrader.Upgrade(r.Writer, r.Request, nil)
@@ -28,6 +48,8 @@ func wsHandler(r *gin.Context) {
 	defer conn.Close()
 
 	clients = append(clients, conn)
+
+	people_store.on_listener_join(conn)
 
 	for {
 		_, p, err := conn.ReadMessage()
@@ -60,6 +82,7 @@ func broadcast(message string) {
 }
 
 func main() {
+
 	gin.SetMode(gin.ReleaseMode) // Switch to release mode
 
 	r := gin.Default()
@@ -140,7 +163,13 @@ func main() {
 	})
 
 	r.GET("/people", func(c *gin.Context) {
-		c.JSON(200, people)
+		converted := make(map[string]map[string]interface{})
+
+		for key, value := range people_store.rows {
+			converted[fmt.Sprintf("%v", key)] = value
+		}
+
+		c.JSON(200, converted)
 	})
 
 	r.GET("/ws", wsHandler) // Don't use WrapH here, just register the handler directly
