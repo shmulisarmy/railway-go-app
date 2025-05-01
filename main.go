@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	gin.SetMode(gin.ReleaseMode) // Switch to release mode
 	r := gin.Default()
 
 	r.GET("/ping", func(c *gin.Context) {
