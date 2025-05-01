@@ -88,9 +88,8 @@ func main() {
 	})
 
 	port := os.Getenv("PORT")
-
 	if port == "" {
-		panic("no PORT var loaded")
+		port = "8000"
 	}
 
 	r.GET("/port", func(c *gin.Context) {
@@ -138,6 +137,10 @@ func main() {
 			}
 		}
 		c.JSON(200, todo)
+	})
+
+	r.GET("/people", func(c *gin.Context) {
+		c.JSON(200, people)
 	})
 
 	r.GET("/ws", wsHandler) // Don't use WrapH here, just register the handler directly

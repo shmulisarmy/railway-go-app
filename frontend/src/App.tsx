@@ -3,9 +3,11 @@ import { createResource, For, type Component } from 'solid-js';
 import logo from './logo.svg';
 import styles from './App.module.css';
 import { createMutable } from 'solid-js/store';
+import People from './people';
 
 
 
+// const backend_url = "http://localhost:8000"
 const backend_url = ""
 const ws = new WebSocket(`${backend_url}/ws`)
 
@@ -41,6 +43,7 @@ ws.onmessage = (e) => {
         <input type="text" name='message' />
         <button type="submit">Send</button>
       </form>
+      <People/>
     </div>
   );
 };
