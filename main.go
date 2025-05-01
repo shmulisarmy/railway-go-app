@@ -1,7 +1,7 @@
 package main
 
 import (
-	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
@@ -16,7 +16,8 @@ func main() {
 		})
 	})
 
-	port := os.Getenv("PORT")
+	port := "8000"
+	// port := os.Getenv("PORT")
 
 	r.GET("/port", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -24,11 +25,49 @@ func main() {
 		})
 	})
 
-	r.GET("/test", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"test": os.Getenv("test"),
-		})
+	// @Summary      Get all todos
+	// @Description  get all todos
+	// @Tags         todos
+	// @Accept       json
+	// @Produce      json
+	// @Success      200  {object}  []Todo
+	// @Failure      400  {object}  ErrorResponse
+	// @Router       /todos [get]
+
+	r.GET("/todos", func(c *gin.Context) {
+		c.JSON(200, todos)
 	})
+	r.GET("/todo/:id", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			panic(err)
+		}
+		var todo Todo
+		for _, todo := range todos {
+			if todo.Id == id {
+				c.JSON(200, todo)
+				return
+			}
+		}
+		c.JSON(200, todo)
+	})
+
+	r.PATCH("/todo/:id/completed", func(c *gin.Context) {
+		id, err := strconv.Atoi(c.Param("id"))
+		if err != nil {
+			panic(err)
+		}
+		var todo Todo
+		for _, todo := range todos {
+			if todo.Id == id {
+				todo.Completed = !todo.Completed
+				c.JSON(200, todo)
+				return
+			}
+		}
+		c.JSON(200, todo)
+	})
+	print("http://localhost:" + port)
 
 	r.Run("0.0.0.0:" + port) // listen and serve on 0.0.0.0:8080
 }
