@@ -2,15 +2,75 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 )
+
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+		// return []string{"http://localhost:3000"}.Contains(r.Header.Get("Origin"))
+	},
+}
+
+var clients = make([]*websocket.Conn, 0)
+
+func wsHandler(r *gin.Context) {
+	conn, err := upgrader.Upgrade(r.Writer, r.Request, nil)
+	if err != nil {
+		r.JSON(http.StatusBadRequest, gin.H{"error": "WebSocket upgrade failed"})
+		return
+	}
+	defer conn.Close()
+
+	clients = append(clients, conn)
+
+	for {
+		_, p, err := conn.ReadMessage()
+
+		if err != nil {
+			remove_client(conn)
+			break
+		}
+		broadcast(string(p))
+		fmt.Printf("Received: %s\n", p)
+
+	}
+}
+
+func remove_client(conn *websocket.Conn) {
+	for i, client := range clients {
+		if client == conn {
+			clients = append(clients[:i], clients[i+1:]...)
+			break
+		}
+	}
+}
+
+func broadcast(message string) {
+	for _, client := range clients {
+		if err := client.WriteMessage(websocket.TextMessage, []byte(message)); err != nil {
+			remove_client(client)
+		}
+	}
+}
 
 func main() {
 	gin.SetMode(gin.ReleaseMode) // Switch to release mode
+
 	r := gin.Default()
+
+	r.Use(func(c *gin.Context) {
+		c.Writer.Header().Add("Access-Control-Allow-Origin", "*")
+		c.Next()
+	})
+
+	r.LoadHTMLGlob("frontend/dist/index.html")
+	r.Static("/static", "frontend/dist/static")
 
 	r.GET("/ping", func(c *gin.Context) {
 		fmt.Printf("this is the ping route")
@@ -19,7 +79,19 @@ func main() {
 		})
 	})
 
+	r.GET("/", func(c *gin.Context) {
+		c.File("frontend/dist/index.html")
+	})
+
+	r.GET("/assets/*filepath", func(c *gin.Context) {
+		c.File("frontend/dist/assets/" + c.Param("filepath"))
+	})
+
 	port := os.Getenv("PORT")
+
+	if port == "" {
+		panic("no PORT var loaded")
+	}
 
 	r.GET("/port", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -33,15 +105,6 @@ func main() {
 			"message": "new route",
 		})
 	})
-
-	// @Summary      Get all todos
-	// @Description  get all todos
-	// @Tags         todos
-	// @Accept       json
-	// @Produce      json
-	// @Success      200  {object}  []Todo
-	// @Failure      400  {object}  ErrorResponse
-	// @Router       /todos [get]
 
 	r.GET("/todos", func(c *gin.Context) {
 		c.JSON(200, todos)
@@ -76,6 +139,8 @@ func main() {
 		}
 		c.JSON(200, todo)
 	})
+
+	r.GET("/ws", wsHandler) // Don't use WrapH here, just register the handler directly
 
 	for _, route := range r.Routes() {
 		fmt.Printf("%s %s\n", route.Method, route.Path)
