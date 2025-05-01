@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -12,17 +13,24 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/ping", func(c *gin.Context) {
+		fmt.Printf("this is the ping route")
 		c.JSON(200, gin.H{
 			"message": "pong",
 		})
 	})
 
-	port := "8000"
-	// port := os.Getenv("PORT")
+	port := os.Getenv("PORT")
 
 	r.GET("/port", func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"port": port,
+		})
+	})
+
+	r.GET("/new-route", func(c *gin.Context) {
+		fmt.Printf("new route")
+		c.JSON(200, gin.H{
+			"message": "new route",
 		})
 	})
 
