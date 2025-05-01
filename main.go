@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -67,6 +68,11 @@ func main() {
 		}
 		c.JSON(200, todo)
 	})
+
+	for _, route := range r.Routes() {
+		fmt.Printf("%s %s\n", route.Method, route.Path)
+		fmt.Printf("%s %s\n", route.Handler, route.Path)
+	}
 	print("http://localhost:" + port)
 
 	r.Run("0.0.0.0:" + port) // listen and serve on 0.0.0.0:8080
