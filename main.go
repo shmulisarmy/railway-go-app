@@ -96,7 +96,7 @@ func main() {
 	})
 
 	r.LoadHTMLGlob("frontend/dist/index.html")
-	r.Static("/static", "frontend/dist/static")
+	r.Static("/assets", "frontend/dist/assets")
 
 	r.GET("/ping", func(c *gin.Context) {
 		fmt.Printf("this is the ping route")
@@ -107,10 +107,6 @@ func main() {
 
 	r.GET("/", func(c *gin.Context) {
 		c.File("frontend/dist/index.html")
-	})
-
-	r.GET("/assets/*filepath", func(c *gin.Context) {
-		c.File("frontend/dist/assets/" + c.Param("filepath"))
 	})
 
 	port := os.Getenv("PORT")
