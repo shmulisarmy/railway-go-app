@@ -23,11 +23,11 @@ var clients = make([]*websocket.Conn, 0)
 var people_store LiveDbSync
 
 func init() {
-	// err := env.Load_env(".env")
+	var err error
+	// err = env.Load_env(".env")
 	// if err != nil {
 	// 	panic(err)
 	// }
-	var err error
 	db_conn, err = pgx.Connect(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		panic(err)
