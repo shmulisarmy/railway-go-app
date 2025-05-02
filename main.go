@@ -28,6 +28,7 @@ func init() {
 	// if err != nil {
 	// 	panic(err)
 	// }
+
 	db_conn, err = pgx.Connect(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		panic(err)
