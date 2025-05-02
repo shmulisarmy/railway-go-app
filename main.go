@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"railway-go-app/env"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -23,18 +24,19 @@ var clients = make([]*websocket.Conn, 0)
 var people_store LiveDbSync
 
 func init() {
-	// err := env.Load_env(".env")
-	// if err != nil {
-	// 	panic(err)
-	// }
-	var err error
+	err := env.Load_env(".env")
+	if err != nil {
+		panic(err)
+	}
 	db_conn, err = pgx.Connect(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		panic(err)
 	}
 	people_store = LiveDbSync{
-		query:        "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
-		update_query: "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
+		query: "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
+		update_query: func(last_update_check float64) string {
+			return "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false and last_updated > " + fmt.Sprintf("%f", last_update_check)
+		},
 	}
 	people_store.load_data()
 }
@@ -174,11 +176,13 @@ func main() {
 
 	r.GET("/ws", wsHandler) // Don't use WrapH here, just register the handler directly
 
-	for _, route := range r.Routes() {
-		fmt.Printf("%s %s\n", route.Method, route.Path)
-		fmt.Printf("%s %s\n", route.Handler, route.Path)
-	}
+	// for _, route := range r.Routes() {
+	// 	fmt.Printf("%s %s\n", route.Method, route.Path)
+	// 	fmt.Printf("%s %s\n", route.Handler, route.Path)
+	// }
 	print("http://localhost:" + port)
 
-	r.Run("0.0.0.0:" + port) // listen and serve on 0.0.0.0:8080
+	if err := r.Run("0.0.0.0:" + port); err != nil {
+		panic(err)
+	}
 }

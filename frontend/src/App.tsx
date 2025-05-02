@@ -19,20 +19,20 @@ const [todos, {mutate}] = createResource(() => fetch(`${backend_url}/todos`).the
 const messages = createMutable([])
 
 
-// ws.onmessage = (e) => {
-//   console.log("type", e.type)
-//   console.log("data", e.data)
-//   const json = JSON.parse(e.data)
-//   console.table(json)
-//   if (json.type === "row-added" || json.type === "row-updated") {
-//     people[json.id as number] = json.row
-//   }
-//   if (json.type === "store-join") {
-//     for (const [id, obj] of Object.entries(json.rows as {[key: number]: Person_t})) {
-//       people[Number(id)] = obj
-//     }
-//   } 
-// }
+ws.onmessage = (e) => {
+  console.log("type", e.type)
+  console.log("data", e.data)
+  const json = JSON.parse(e.data)
+  console.table(json)
+  if (json.type === "row-added" || json.type === "row-updated") {
+    people[json.id as number] = json.row
+  }
+  if (json.type === "store-join") {
+    for (const [id, obj] of Object.entries(json.rows as {[key: number]: Person_t})) {
+      people[Number(id)] = obj
+    }
+  } 
+}
 
 
 

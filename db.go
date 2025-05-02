@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
@@ -11,15 +12,17 @@ import (
 var db_conn *pgx.Conn
 
 type LiveDbSync struct {
-	query           string
-	update_query    string
-	rows            map[interface{}]map[string]interface{}
-	code_listeners  []func(map[string]interface{})
-	listeners       []*websocket.Conn
-	message_id_upto int
+	query             string
+	update_query      func(float64) string
+	rows              map[interface{}]map[string]interface{}
+	code_listeners    []func(map[string]interface{})
+	listeners         []*websocket.Conn
+	message_id_upto   int
+	last_update_check float64
 }
 
 func (store *LiveDbSync) load_data() {
+	store.last_update_check = current_time()
 	store.rows = make(map[interface{}]map[string]interface{})
 	rows, err := ScanRowsToMapSlice(context.Background(), db_conn, store.query)
 	if err != nil {
@@ -29,6 +32,7 @@ func (store *LiveDbSync) load_data() {
 		pk := row["id"]
 		store.rows[pk] = row
 	}
+	setInterval(store.update_data, 1*time.Second)
 }
 
 func (store *LiveDbSync) on_listener_join(conn *websocket.Conn) {
@@ -52,6 +56,7 @@ func (store *LiveDbSync) on_code_listener_join(code_listener func(map[string]int
 func (store *LiveDbSync) broadcast_json(message map[string]interface{}) {
 	message["message_id_upto"] = store.message_id_upto
 	store.message_id_upto++
+	fmt.Printf("broadcast_json: %v\n", message)
 	for _, conn := range store.listeners {
 		err := conn.WriteJSON(message)
 		if err != nil {
@@ -65,7 +70,9 @@ func (store *LiveDbSync) broadcast_json(message map[string]interface{}) {
 }
 
 func (store *LiveDbSync) update_data() {
-	rows, err := ScanRowsToMapSlice(context.Background(), db_conn, store.update_query)
+	fmt.Printf("calling update_data with last_update_check: %f\n", store.last_update_check)
+	rows, err := ScanRowsToMapSlice(context.Background(), db_conn, store.update_query(store.last_update_check))
+	store.last_update_check = current_time()
 	if err != nil {
 		panic(err)
 	}
@@ -87,6 +94,7 @@ func (store *LiveDbSync) update_data() {
 			})
 		}
 		store.rows[pk] = row
+		fmt.Printf("row added: %v\n", row)
 
 	}
 }

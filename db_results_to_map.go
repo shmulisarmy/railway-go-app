@@ -3,14 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/jackc/pgx/v5"
 )
 
+var temp_stmt_multiple_id_upto = 0
+
 // ScanRowsToMapSlice runs a query and returns all rows as a slice of map[string]interface{}
 func ScanRowsToMapSlice(ctx context.Context, conn *pgx.Conn, query string, args ...interface{}) ([]map[string]interface{}, error) {
 	// Prepare a temporary statement to get metadata
-	stmt, err := conn.Prepare(ctx, "temp_stmt_multiple", query)
+	stmt, err := conn.Prepare(ctx, "temp_stmt_multiple"+strconv.Itoa(temp_stmt_multiple_id_upto), query)
+	temp_stmt_multiple_id_upto++
 	if err != nil {
 		return nil, fmt.Errorf("prepare failed: %w", err)
 	}
