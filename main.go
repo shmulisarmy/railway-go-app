@@ -7,6 +7,9 @@ import (
 	"os"
 	"strconv"
 
+	liveDbSync "railway-go-app/db_live_sync"
+	"railway-go-app/env"
+
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5"
@@ -19,27 +22,33 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var clients = make([]*websocket.Conn, 0)
-var people_store LiveDbSync
+var clients = make([]*websocket.Conn, 100)
+var people_store liveDbSync.LiveDbSync
+
+var db_conn *pgx.Conn
 
 func init() {
+
 	var err error
-	// err = env.Load_env(".env")
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err = env.Load_env(".env")
+	if err != nil {
+		panic(err)
+	}
 
 	db_conn, err = pgx.Connect(context.Background(), os.Getenv("DB_URL"))
 	if err != nil {
 		panic(err)
 	}
-	people_store = LiveDbSync{
-		query: "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
-		update_query: func(last_update_check float64) string {
+
+	liveDbSync.Config(db_conn)
+
+	people_store = liveDbSync.LiveDbSync{
+		Query: "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false",
+		Update_query: func(last_update_check float64) string {
 			return "select id, name, image, gender, is_descendant, parent_id, spouse_id from person where removed = false and last_updated > " + fmt.Sprintf("%f", last_update_check)
 		},
 	}
-	people_store.load_data()
+	people_store.Load_data()
 }
 
 func wsHandler(r *gin.Context) {
@@ -52,7 +61,7 @@ func wsHandler(r *gin.Context) {
 
 	clients = append(clients, conn)
 
-	people_store.on_listener_join(conn)
+	people_store.On_listener_join(conn)
 
 	for {
 		_, p, err := conn.ReadMessage()
@@ -164,7 +173,7 @@ func main() {
 	r.GET("/people", func(c *gin.Context) {
 		converted := make(map[string]map[string]interface{})
 
-		for key, value := range people_store.rows {
+		for key, value := range people_store.Rows {
 			converted[fmt.Sprintf("%v", key)] = value
 		}
 

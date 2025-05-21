@@ -20,21 +20,36 @@ const messages = createMutable([])
 
 
 ws.onmessage = (e) => {
-  console.log("type", e.type)
   console.log("data", e.data)
   const json = JSON.parse(e.data)
-  console.table(json)
-  if (json.type === "row-added" || json.type === "row-updated") {
-    people[json.id as number] = json.row
+  const message_handlers: {[key: string]: (json: any) => void} = {
+    row_added,
+    row_updated,
+    store_join
   }
-  if (json.type === "store-join") {
-    for (const [id, obj] of Object.entries(json.rows as {[key: number]: Person_t})) {
-      people[Number(id)] = obj
-    }
-  } 
+  const handler = message_handlers[json.type]
+  if (handler) {
+    handler(json)
+  }
 }
 
 
+
+//start
+function row_added(json: {row: any, id: number}){
+  people[json.id as number] = json.row
+}
+
+function row_updated(json: {row: any, id: number}){
+  people[json.id as number] = json.row
+}
+
+function store_join(json: {rows: any}){
+  for (const [id, obj] of Object.entries(json.rows as {[key: number]: Person_t})) {
+    people[Number(id)] = obj
+  }
+}
+//end
 
   const App: Component = () => {
   return (
